@@ -1,0 +1,75 @@
+name: GitOps release PR
+
+on:
+  workflow_call:
+    inputs:
+      pr-body:
+        description: 'PR body text'
+        required: true
+        type: string
+      pr-branch:
+        description: 'PR branch name'
+        required: true
+        type: string
+      pr-changes:
+        description: 'PR changes via yq commands'
+        required: true
+        type: string
+      pr-commit-message:
+        description: 'PR commit message'
+        required: true
+        type: string
+      pr-draft:
+        description: 'PR as a draft-PR'
+        default: false
+        required: false
+        type: boolean
+      pr-labels:
+        description: 'PR GitHub labels'
+        required: true
+        type: string
+      pr-repository:
+        description: 'GitHub repository to raise a PR'
+        required: true
+        type: string
+      pr-target:
+        description: 'PR target branch'
+        required: true
+        type: string
+      pr-title:
+        description: 'PR title'
+        required: true
+        type: string
+    secrets:
+      token:
+        description: 'User GitHub PAT'
+        required: true
+
+jobs:
+  gitops-release-pr:
+    name: GitOps changes and PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout manifests
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ inputs.pr-repository }}
+          ref: ${{ inputs.pr-target }}
+          token: ${{ secrets.token }}
+
+      - name: Update manifests
+        uses: mikefarah/yq@v4.13.3
+        with:
+          cmd: ${{ inputs.pr-changes }}
+        
+      - name: Raise manifests PR
+        uses: peter-evans/create-pull-request@v3.10.1
+        with:
+          token: ${{ secrets.token }}
+          commit-message: ${{ inputs.pr-commit-message }}
+          title: ${{ inputs.pr-title }}
+          branch: ${{ inputs.pr-branch }}
+          delete-branch: true
+          body: ${{ inputs.pr-body }}
+          labels: ${{ inputs.pr-labels }}
+          draft: ${{ inputs.pr-draft }}
